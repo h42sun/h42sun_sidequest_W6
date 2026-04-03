@@ -1,9 +1,9 @@
-// src/entities/Boar.js
+// src/entities/Slime.js
 // Enemy controller (WORLD entity).
 //
 // Responsibilities:
-// - Create and configure boar sprites from tilemap spawns ("b")
-// - Run boar AI each frame (patrol + probe-based turning)
+// - Create and configure slime sprites from tilemap spawns ("b")
+// - Run slime AI each frame (patrol + probe-based turning)
 // - Manage probes (front/foot/ground) for terrain and hazard sensing
 // - Handle damage, knockback, flash, death animation, and removal
 // - Expose simple API to Level (update/reset hooks as needed)
@@ -15,11 +15,11 @@
 // - Does NOT play sounds directly (emit events; Game wires SoundManager)
 //
 // Architectural notes:
-// - Boar owns AI + combat state (hp, knock timers, probes, death state).
+// - Slime owns AI + combat state (hp, knock timers, probes, death state).
 // - Level owns the world rules and manages group creation/spawns.
-// - Boar emits events via EventBus (boar:damaged, boar:died) for sound/debug/UI decoupling.
+// - Slime emits events via EventBus (slime:damaged, slime:died) for sound/debug/UI decoupling.
 
-export class BoarController {
+export class SlimeController {
   constructor(pkg, assets) {
     this.pkg = pkg;
     this.assets = assets;
@@ -35,7 +35,7 @@ export class BoarController {
     this.wallsR = null;
 
     // tuning defaults (match monolith)
-    const b = this.tuning.boar || {};
+    const b = this.tuning.slime || {};
     this.W = b.w ?? 18;
     this.H = b.h ?? 12;
     this.SPEED = b.speed ?? 0.6;
@@ -55,8 +55,8 @@ export class BoarController {
   }
 
   /**
-   * Attach probes and initialize each boar sprite in the existing group.
-   * @param {Group} boarGroup
+   * Attach probes and initialize each slime sprite in the existing group.
+   * @param {Group} slimeGroup
    * @param {Object} refs
    * @param {Object} refs.solids - { ground, groundDeep, platformsL, platformsR }
    * @param {Group} refs.leaf
@@ -64,8 +64,8 @@ export class BoarController {
    * @param {Group} refs.wallsL
    * @param {Group} refs.wallsR
    */
-  initFromGroup(boarGroup, refs) {
-    this.group = boarGroup;
+  initFromGroup(slimeGroup, refs) {
+    this.group = slimeGroup;
 
     this.solids = refs.solids;
     this.leaf = refs.leaf;
@@ -76,7 +76,7 @@ export class BoarController {
     // Collide with solids/walls (turning rule via collision + probe logic)
     this._hookSolids();
 
-    // Ensure boars die in fire (world rule)
+    // Ensure slimes die in fire (world rule)
     if (this.fire) {
       this.group.overlaps(this.fire, (e) => this.dieInFire(e));
     }
@@ -149,7 +149,7 @@ export class BoarController {
   }
 
   /**
-   * Called by Level wiring (boar overlaps fire).
+   * Called by Level wiring (slime overlaps fire).
    */
   dieInFire(e) {
     if (e.dead || e.dying) return;
@@ -160,7 +160,7 @@ export class BoarController {
   }
 
   /**
-   * Optional helper you can call from Player instead of mutating boar fields directly.
+   * Optional helper you can call from Player instead of mutating slime fields directly.
    * This mirrors monolith behavior.
    */
   takeHit(e, facingDir) {
@@ -245,8 +245,8 @@ export class BoarController {
       e.x = e.holdX;
       e.y = e.holdY;
 
-      const frames = this.assets.boarAnis?.death?.frames ?? 4;
-      const delayFrames = this.assets.boarAnis?.death?.frameDelay ?? 16;
+      const frames = this.assets.slimeAnis?.death?.frames ?? 4;
+      const delayFrames = this.assets.slimeAnis?.death?.frameDelay ?? 16;
       const msPerFrame = (delayFrames * 1000) / 60;
 
       e.deathFrameTimer += deltaTime;
@@ -290,12 +290,21 @@ export class BoarController {
 
     // probe-based turning rules
     const noGroundAhead = !this._frontHasGround(e);
-    const frontHitsLeaf = this.leaf ? e.frontProbe.overlapping(this.leaf) : false;
-    const frontHitsFire = this.fire ? e.frontProbe.overlapping(this.fire) : false;
+    const frontHitsLeaf = this.leaf
+      ? e.frontProbe.overlapping(this.leaf)
+      : false;
+    const frontHitsFire = this.fire
+      ? e.frontProbe.overlapping(this.fire)
+      : false;
     const frontHitsWall = this._frontHitsWall(e);
     const headSeesFire = this.fire ? e.footProbe.overlapping(this.fire) : false;
 
-    const dangerNow = noGroundAhead || frontHitsLeaf || frontHitsFire || frontHitsWall || headSeesFire;
+    const dangerNow =
+      noGroundAhead ||
+      frontHitsLeaf ||
+      frontHitsFire ||
+      frontHitsWall ||
+      headSeesFire;
 
     if (e.turnTimer === 0 && this._shouldTurnNow(e, dangerNow)) {
       this._turn(e, -e.dir);

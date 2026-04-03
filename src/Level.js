@@ -3,7 +3,7 @@
 //
 // Responsibilities:
 // - Build tilemap and static groups from level.tilemap
-// - Spawn and manage world entities (Player, Boar, Leaf, Fire)
+// - Spawn and manage world entities (Player, Slime, Leaf, Fire)
 // - Apply world rules (gravity, fall reset, win condition)
 // - Track world metrics (score, win flag) and handle reset logic
 //
@@ -21,12 +21,12 @@ import { PlayerEntity } from "./entities/PlayerEntity.js";
 import { PlayerController } from "./world/PlayerController.js";
 import { buildTilesAndGroups } from "./world/TileBuilder.js";
 import {
-  hookBoarSolids,
-  cacheBoarSpawns,
-  updateBoars,
-  clearBoars,
-  rebuildBoarsFromSpawns,
-} from "./world/BoarSystem.js";
+  hookSlimeSolids,
+  cacheSlimeSpawns,
+  updateSlimes,
+  clearSlimes,
+  rebuildSlimesFromSpawns,
+} from "./world/SlimeSystem.js";
 import { maybeRedrawHUD, redrawHUD } from "./world/HUDRenderer.js";
 
 export class Level {
@@ -50,7 +50,7 @@ export class Level {
     // IMPORTANT: we STOP this timer on win OR death.
     this.elapsedMs = 0;
 
-    // groups (created in TileBuilder / BoarSystem)
+    // groups (created in TileBuilder / SlimeSystem)
     this.ground = null;
     this.groundDeep = null;
     this.platformsL = null;
@@ -58,7 +58,7 @@ export class Level {
     this.wallsL = null;
     this.wallsR = null;
 
-    this.boar = null;
+    this.slime = null;
     this.leaf = null;
     this.fire = null;
 
@@ -68,7 +68,7 @@ export class Level {
 
     // restart bookkeeping
     this.leafSpawns = [];
-    this.boarSpawns = [];
+    this.slimeSpawns = [];
 
     // cached HUD state
     this._lastScore = null;
@@ -76,10 +76,16 @@ export class Level {
     this._lastMaxHealth = null;
 
     // normalized world config
-    this.WIN_SCORE = Number(this.worldCfg.winScore ?? this.levelData?.winScore ?? 15);
-    this.GRAVITY = Number(this.worldCfg.gravity ?? this.levelData?.gravity ?? 10);
+    this.WIN_SCORE = Number(
+      this.worldCfg.winScore ?? this.levelData?.winScore ?? 15,
+    );
+    this.GRAVITY = Number(
+      this.worldCfg.gravity ?? this.levelData?.gravity ?? 10,
+    );
     this.FALL_RESET_MARGIN_TILES = Number(
-      this.worldCfg.fallResetMarginTiles ?? this.levelData?.fallResetMarginTiles ?? 3,
+      this.worldCfg.fallResetMarginTiles ??
+        this.levelData?.fallResetMarginTiles ??
+        3,
     );
 
     // IMPORTANT:
@@ -87,8 +93,8 @@ export class Level {
     // If you wire them again on restart, p5play will stack callbacks and you’ll
     // get double damage / double pickups / “weird” state.
     this._playerInteractionsWired = false;
-    this._boarFireWired = false;
-    this._boarGroupBoundForPlayer = null; // remembers which boar Group we bound collides() to
+    this._slimeFireWired = false;
+    this._slimeGroupBoundForPlayer = null; // remembers which slime Group we bound collides() to
 
     // bind event listeners
     this._unsubs = [];
@@ -97,7 +103,9 @@ export class Level {
 
   _installEventListeners() {
     if (!this.events) return;
-    this._unsubs.push(this.events.on("player:attackWindow", (info) => this._tryHitBoar(info)));
+    this._unsubs.push(
+      this.events.on("player:attackWindow", (info) => this._tryHitSlime(info)),
+    );
   }
 
   destroy() {
@@ -135,22 +143,24 @@ export class Level {
     // TileBuilder is responsible for creating:
     // - static tile groups (ground/platforms/walls)
     // - interactive groups (leaf/fire)
-    // - boar group + tile spawning ('b') via Tiles()
+    // - slime group + tile spawning ('b') via Tiles()
     buildTilesAndGroups(this);
 
     // 2) Player entity + controller (WORLD)
     this.player = new PlayerEntity(this.pkg, this.assets);
     this.player.buildSprites();
-    this.playerCtrl = new PlayerController(this.player, { events: this.events });
+    this.playerCtrl = new PlayerController(this.player, {
+      events: this.events,
+    });
 
-    // 3) Cache spawns + wire interactions (ONE TIME) + hook boar collisions
+    // 3) Cache spawns + wire interactions (ONE TIME) + hook slime collisions
     this._cacheLeafSpawns();
-    cacheBoarSpawns(this);
+    cacheSlimeSpawns(this);
 
     this._wirePlayerInteractionsOnce(); // player<->leaf/fire
-    this._wireBoarFireRuleOnce(); // boar<->fire (wired once to boar group)
-    this._rebindPlayerBoarCollide(); // player<->boar (bind to current boar group)
-    hookBoarSolids(this);
+    this._wireSlimeFireRuleOnce(); // slime<->fire (wired once to slime group)
+    this._rebindPlayerSlimeCollide(); // player<->slime (bind to current slime group)
+    hookSlimeSolids(this);
 
     // 4) HUD
     this._lastScore = this._lastHealth = this._lastMaxHealth = null;
@@ -168,11 +178,11 @@ export class Level {
       this.elapsedMs += deltaTime;
     }
 
-    // 1) AI (freeze boars if dead/won, matching monolith feel)
+    // 1) AI (freeze slimes if dead/won, matching monolith feel)
     if (!playerDead && !this.won) {
-      updateBoars(this);
-    } else if (this.boar) {
-      for (const e of this.boar) e.vel.x = 0;
+      updateSlimes(this);
+    } else if (this.slime) {
+      for (const e of this.slime) e.vel.x = 0;
     }
 
     // 2) Player consumes input snapshot
@@ -220,18 +230,18 @@ export class Level {
       s.removeColliders();
     }
 
-    // clear and rebuild boars from cached spawns (creates a NEW Group)
-    clearBoars(this);
-    rebuildBoarsFromSpawns(this);
+    // clear and rebuild slimes from cached spawns (creates a NEW Group)
+    clearSlimes(this);
+    rebuildSlimesFromSpawns(this);
 
     // IMPORTANT:
     // - Do NOT re-wire player overlaps/collides here (they would stack).
-    // - But boar rules/collisions must be re-attached because this.boar is a new Group.
-    this._boarFireWired = false; // boar group replaced => must re-wire overlaps to fire
-    this._wireBoarFireRuleOnce();
+    // - But slime rules/collisions must be re-attached because this.slime is a new Group.
+    this._slimeFireWired = false; // slime group replaced => must re-wire overlaps to fire
+    this._wireSlimeFireRuleOnce();
 
-    this._rebindPlayerBoarCollide(); // rebind because this.boar is a NEW Group
-    hookBoarSolids(this);
+    this._rebindPlayerSlimeCollide(); // rebind because this.slime is a NEW Group
+    hookSlimeSolids(this);
 
     this._lastScore = this._lastHealth = this._lastMaxHealth = null;
     maybeRedrawHUD(this);
@@ -247,8 +257,8 @@ export class Level {
   // These callbacks remain valid across restarts because:
   // - the player sprite is not replaced (it is reset)
   // - the leaf sprites persist (they are toggled active/visible)
-  // - the boar Group is replaced on restart, BUT the player's collides() rule
-  //   is attached to the player sprite; we re-attach it to the new boar Group.
+  // - the slime Group is replaced on restart, BUT the player's collides() rule
+  //   is attached to the player sprite; we re-attach it to the new slime Group.
   _wirePlayerInteractionsOnce() {
     if (this._playerInteractionsWired) return;
     this._playerInteractionsWired = true;
@@ -256,7 +266,9 @@ export class Level {
     const p = this.playerCtrl.sprite;
 
     // leaf collect
-    p.overlaps(this.leaf, (playerSprite, leafSprite) => this._rescueLeaf(playerSprite, leafSprite));
+    p.overlaps(this.leaf, (playerSprite, leafSprite) =>
+      this._rescueLeaf(playerSprite, leafSprite),
+    );
 
     // fire damage
     p.overlaps(this.fire, (playerSprite, fireSprite) => {
@@ -264,37 +276,37 @@ export class Level {
     });
   }
 
-  // Boar/fire rule is attached to the boar Group.
-  // We wire it ONCE per boar-group instance (not per Level lifetime),
-  // because the boar group is replaced on restart.
-  _wireBoarFireRuleOnce() {
-    if (this._boarFireWired) return;
-    if (!this.boar || !this.fire) return;
+  // Slime/fire rule is attached to the slime Group.
+  // We wire it ONCE per slime-group instance (not per Level lifetime),
+  // because the slime group is replaced on restart.
+  _wireSlimeFireRuleOnce() {
+    if (this._slimeFireWired) return;
+    if (!this.slime || !this.fire) return;
 
-    this._boarFireWired = true;
-    this.boar.overlaps(this.fire, (boarSprite) => {
-      if (boarSprite.dead || boarSprite.dying) return;
-      boarSprite.hp = 0;
-      boarSprite.dying = true;
-      boarSprite.knockTimer = 0;
-      boarSprite.vel.x = 0;
+    this._slimeFireWired = true;
+    this.slime.overlaps(this.fire, (slimeSprite) => {
+      if (slimeSprite.dead || slimeSprite.dying) return;
+      slimeSprite.hp = 0;
+      slimeSprite.dying = true;
+      slimeSprite.knockTimer = 0;
+      slimeSprite.vel.x = 0;
     });
   }
 
-  // Player/boar contact damage must be attached to the CURRENT boar Group.
-  // Guard so we only bind once per boar-Group instance (prevents stacking across restarts).
-  _rebindPlayerBoarCollide() {
+  // Player/slime contact damage must be attached to the CURRENT slime Group.
+  // Guard so we only bind once per slime-Group instance (prevents stacking across restarts).
+  _rebindPlayerSlimeCollide() {
     const p = this.playerCtrl?.sprite;
-    const g = this.boar;
+    const g = this.slime;
     if (!p || !g) return;
 
     // If we already bound to this exact Group object, do nothing.
-    if (this._boarGroupBoundForPlayer === g) return;
-    this._boarGroupBoundForPlayer = g;
+    if (this._slimeGroupBoundForPlayer === g) return;
+    this._slimeGroupBoundForPlayer = g;
 
-    p.collides(g, (playerSprite, boarSprite) => {
-      if (boarSprite.dying || boarSprite.dead) return;
-      this.playerCtrl.damageFromX(boarSprite.x);
+    p.collides(g, (playerSprite, slimeSprite) => {
+      if (slimeSprite.dying || slimeSprite.dead) return;
+      this.playerCtrl.damageFromX(slimeSprite.x);
     });
   }
 
@@ -306,7 +318,10 @@ export class Level {
     leafSprite.removeColliders();
 
     this.score++;
-    this.events?.emit("leaf:collected", { score: this.score, winScore: this.WIN_SCORE });
+    this.events?.emit("leaf:collected", {
+      score: this.score,
+      winScore: this.WIN_SCORE,
+    });
 
     if (this.score >= this.WIN_SCORE) {
       this.won = true;
@@ -315,13 +330,17 @@ export class Level {
       playerSprite.vel.x = 0;
       playerSprite.vel.y = 0;
 
-      this.events?.emit("level:won", { score: this.score, winScore: this.WIN_SCORE, elapsedMs: this.elapsedMs });
+      this.events?.emit("level:won", {
+        score: this.score,
+        winScore: this.WIN_SCORE,
+        elapsedMs: this.elapsedMs,
+      });
     }
   }
 
   // Hook called from "player:attackWindow"
-  _tryHitBoar({ facing, x, y }) {
-    if (!this.boar) return;
+  _tryHitSlime({ facing, x, y }) {
+    if (!this.slime) return;
     if (this.player.attackHitThisSwing) return; // optional guard
 
     const rangeX = Number(this.tuning.player?.attackRangeX ?? 20);
@@ -329,7 +348,7 @@ export class Level {
 
     const playerFeetY = y + (this.playerCtrl.sprite?.h ?? 12) / 2;
 
-    for (const e of this.boar) {
+    for (const e of this.slime) {
       if (e.dead || e.dying) continue;
 
       const dx = e.x - x;
@@ -338,10 +357,10 @@ export class Level {
       // NOTE: e.w may be getter-only; reading is fine.
       if (Math.abs(dx) > rangeX + (e.w ?? e.width ?? 18) / 2) continue;
 
-      const boarFeetY = e.y + (e.h ?? e.height ?? 12) / 2;
-      if (Math.abs(boarFeetY - playerFeetY) > rangeY + 10) continue;
+      const slimeFeetY = e.y + (e.h ?? e.height ?? 12) / 2;
+      if (Math.abs(slimeFeetY - playerFeetY) > rangeY + 10) continue;
 
-      this._damageBoar(e, facing);
+      this._damageSlime(e, facing);
 
       // latch "hit happened this swing" on the entity
       this.player.markAttackHit();
@@ -349,21 +368,21 @@ export class Level {
     }
   }
 
-  _damageBoar(e, facingDir) {
+  _damageSlime(e, facingDir) {
     if (e.dead || e.dying) return;
 
-    const flashFrames = Number(this.tuning.boar?.flashFrames ?? 5);
-    const knockFrames = Number(this.tuning.boar?.knockFrames ?? 7);
-    const knockX = Number(this.tuning.boar?.knockbackX ?? 1.2);
-    const knockY = Number(this.tuning.boar?.knockbackY ?? 1.6);
+    const flashFrames = Number(this.tuning.slime?.flashFrames ?? 5);
+    const knockFrames = Number(this.tuning.slime?.knockFrames ?? 7);
+    const knockX = Number(this.tuning.slime?.knockbackX ?? 1.2);
+    const knockY = Number(this.tuning.slime?.knockbackY ?? 1.6);
 
-    e.hp = Math.max(0, (e.hp ?? Number(this.tuning.boar?.hp ?? 3)) - 1);
+    e.hp = Math.max(0, (e.hp ?? Number(this.tuning.slime?.hp ?? 3)) - 1);
     e.flashTimer = flashFrames;
 
-    this.events?.emit("boar:damaged", { hp: e.hp, x: e.x, y: e.y });
+    this.events?.emit("slime:damaged", { hp: e.hp, x: e.x, y: e.y });
 
     if (e.hp <= 0) {
-      // Match monolith: enter "dying" first, then "dead" once grounded in BoarSystem.
+      // Match monolith: enter "dying" first, then "dead" once grounded in SlimeSystem.
       e.dying = true;
       e.vel.x = 0;
 
@@ -372,10 +391,10 @@ export class Level {
       e.removeColliders();
 
       // In the monolith you set "throwPose" here (not "death").
-      // Actual death animation starts later inside BoarSystem when grounded.
+      // Actual death animation starts later inside SlimeSystem when grounded.
       this._setAniFrame0Safe(e, "throwPose");
 
-      this.events?.emit("boar:died", { x: e.x, y: e.y });
+      this.events?.emit("slime:died", { x: e.x, y: e.y });
       return;
     }
 
@@ -412,12 +431,18 @@ export class Level {
 
   _fallResetIfNeeded() {
     // Prefer levelData.tiles.tileH from levels.json; fall back to cfg / default
-    const tileH = Number(this.levelData?.tiles?.tileH ?? this.tilesCfg?.tileH ?? 24);
+    const tileH = Number(
+      this.levelData?.tiles?.tileH ?? this.tilesCfg?.tileH ?? 24,
+    );
     const p = this.playerCtrl.sprite;
     const playerDead = this.player?.dead === true;
 
     // Match monolith: fall reset only while alive and not won.
-    if (!playerDead && !this.won && p.y > this.bounds.levelH + tileH * this.FALL_RESET_MARGIN_TILES) {
+    if (
+      !playerDead &&
+      !this.won &&
+      p.y > this.bounds.levelH + tileH * this.FALL_RESET_MARGIN_TILES
+    ) {
       p.x = this.player.startX;
       p.y = this.player.startY;
       p.vel.x = 0;
@@ -433,20 +458,31 @@ export class Level {
       if (!s) continue;
 
       if (!Number.isFinite(s.x) || !Number.isFinite(s.y)) {
-        console.warn("[SANITY] removing sprite with bad position:", { x: s.x, y: s.y });
+        console.warn("[SANITY] removing sprite with bad position:", {
+          x: s.x,
+          y: s.y,
+        });
         s.remove?.();
         continue;
       }
 
       // NOTE: In p5play v3, w/h may be getter-only and still valid to read.
       if ("w" in s && (!Number.isFinite(s.w) || s.w <= 0)) {
-        console.warn("[SANITY] removing sprite with bad width:", { w: s.w, x: s.x, y: s.y });
+        console.warn("[SANITY] removing sprite with bad width:", {
+          w: s.w,
+          x: s.x,
+          y: s.y,
+        });
         s.remove?.();
         continue;
       }
 
       if ("h" in s && (!Number.isFinite(s.h) || s.h <= 0)) {
-        console.warn("[SANITY] removing sprite with bad height:", { h: s.h, x: s.x, y: s.y });
+        console.warn("[SANITY] removing sprite with bad height:", {
+          h: s.h,
+          x: s.x,
+          y: s.y,
+        });
         s.remove?.();
         continue;
       }
@@ -454,7 +490,9 @@ export class Level {
       if (s.body) {
         const p = s.body.getPosition?.();
         if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) {
-          console.warn("[SANITY] removing sprite with bad body position:", { p });
+          console.warn("[SANITY] removing sprite with bad body position:", {
+            p,
+          });
           s.remove?.();
         }
       }

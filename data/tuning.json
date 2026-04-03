@@ -74,7 +74,7 @@
     }
   },
 
-  "boar": {
+  "slime": {
     "frameW": 32,
     "frameH": 32,
 
@@ -122,13 +122,13 @@
         "frameDelay": 3
       },
       "throwPose": {
-        "row": 4,
+        "row": 2,
         "frames": 1,
         "hold": true,
         "frame": 0
       },
       "death": {
-        "row": 5,
+        "row": 3,
         "frames": 4,
         "frameDelay": 16
       }

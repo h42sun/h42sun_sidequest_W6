@@ -21,7 +21,6 @@ export async function loadAssets(levelPkg, tuningDoc) {
   // loadImage() is "preload-safe" only if p5 is actually tracking it inside preload().
   // To make this robust even if your boot flow uses async/await, we wrap loadImage in a Promise.
   const playerImg = await loadImageAsync("assets/catSpriteSheet.png");
-  const boarImg = await loadImageAsync("assets/boarSpriteSheet.png");
   const leafImg = await loadImageAsync("assets/leafSpriteSheet.png");
   const fireImg = await loadImageAsync("assets/fireSpriteSheet.png");
   const slimeImg = await loadImageAsync("assets/slimeSpriteSheet.png");
@@ -51,10 +50,6 @@ export async function loadAssets(levelPkg, tuningDoc) {
     },
   );
 
-  let boarAnis = buildAnis(tuningDoc?.boar?.animations, defaultBoarAnis(), {
-    spriteSheet: boarImg,
-  });
-
   let slimeAnis = buildAnis(tuningDoc?.slime?.animations, defaultSlimeAnis(), {
     spriteSheet: slimeImg,
   });
@@ -62,12 +57,11 @@ export async function loadAssets(levelPkg, tuningDoc) {
   // If tuning.json uses per-animation "img" fields (strings), preload them here and replace with p5.Images.
   // This prevents runtime XHRs and avoids /undefined crashes.
   playerAnis = await resolveAniImages(playerAnis, "player");
-  boarAnis = await resolveAniImages(boarAnis, "boar");
+  slimeAnis = await resolveAniImages(slimeAnis, "slime");
 
   // Guard rails: fail early with a helpful message instead of crashing inside p5/p5play.
   validateAssets({
     playerImg,
-    boarImg,
     leafImg,
     fireImg,
     slimeImg,
@@ -81,12 +75,11 @@ export async function loadAssets(levelPkg, tuningDoc) {
     fontImg,
     backgrounds,
     playerAnis,
-    boarAnis,
+    slimeAnis,
   });
 
   return {
     playerImg,
-    boarImg,
     leafImg,
     fireImg,
     slimeImg,
@@ -102,7 +95,7 @@ export async function loadAssets(levelPkg, tuningDoc) {
     backgrounds,
 
     playerAnis,
-    boarAnis,
+    slimeAnis,
   };
 }
 
@@ -148,24 +141,16 @@ function defaultPlayerAnis() {
     idle: { row: 0, frames: 4, frameDelay: 10 },
     run: { row: 1, frames: 8, frameDelay: 3 },
     jump: { row: 2, frames: 8, frameDelay: Infinity, frame: 0 },
-    attack: { row: 3, frames: 6, frameDelay: 2 },
+    attack: { row: 11, frames: 6, frameDelay: 2 },
     hurtPose: { row: 5, frames: 9, frameDelay: Infinity },
     death: { row: 5, frames: 7, frameDelay: 16 },
-  };
-}
-
-function defaultBoarAnis() {
-  return {
-    run: { row: 1, frames: 4, frameDelay: 3 },
-    throwPose: { row: 4, frames: 1, frameDelay: Infinity, frame: 0 },
-    death: { row: 5, frames: 4, frameDelay: 16 },
   };
 }
 
 function defaultSlimeAnis() {
   return {
     run: { row: 1, frames: 4, frameDelay: 3 },
-    attack: { row: 2, frames: 4, frameDelay: Infinity, frame: 0 },
+    throwPose: { row: 2, frames: 1, frameDelay: Infinity, frame: 0 },
     death: { row: 3, frames: 4, frameDelay: 16 },
   };
 }
@@ -274,7 +259,7 @@ async function resolveAniImages(anis, label = "entity") {
 function validateAssets(bundle) {
   const mustHaveImages = [
     "playerImg",
-    "boarImg",
+    "slimeImg",
     "leafImg",
     "fireImg",
     "groundTileImg",
@@ -334,6 +319,5 @@ function validateAssets(bundle) {
   };
 
   checkAnis(bundle.playerAnis, "player");
-  checkAnis(bundle.boarAnis, "boar");
   checkAnis(bundle.slimeAnis, "slime");
 }
