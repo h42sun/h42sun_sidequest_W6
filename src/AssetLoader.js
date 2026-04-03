@@ -128,7 +128,7 @@ function buildAnis(tuningAnis, fallbackAnis, inject = {}) {
     }
 
     // If spriteSheet is missing, keep it missing (Level/Entity might set it),
-    // BUT our loadAssets() injects spriteSheet by default for player/boar so it's usually present.
+    // BUT our loadAssets() injects spriteSheet by default for player/slime so it's usually present.
     out[name] = d;
   }
 

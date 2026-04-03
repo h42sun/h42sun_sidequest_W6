@@ -188,7 +188,7 @@
     "collision": {
       "sensorOnly": true,
       "damagesPlayer": true,
-      "killsBoar": true
+      "killsSlime": true
     }
   },
 

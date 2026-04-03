@@ -49,7 +49,7 @@ export class FireController {
     g.spriteSheet = assets.fireImg;
 
     // If you later move this into tuning.json, replace these literals.
-    g.addAnis({ burn: { w: 32, h: 32, row: 0, frames: 16 } });
+    g.addAnis({ burn: { w: 32, h: 32, row: 0, frames: 4 } });
 
     g.w = 18;
     g.h = 16;
