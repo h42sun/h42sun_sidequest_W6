@@ -67,7 +67,7 @@ let audioUnlocked = false;
 function unlockAudioOnce() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  soundManager.playLoop("bgm");
+  soundManager.playLoop("music");
   if (typeof userStartAudio === "function") userStartAudio();
 }
 
@@ -133,6 +133,11 @@ async function boot() {
   // --- Audio registry ---
   // (AudioContext may still be locked until the user clicks/presses a key.)
   soundManager = new SoundManager();
+  soundManager.load("hitEnemy", "assets/sfx/hitEnemy.wav");
+  soundManager.load("jump", "assets/sfx/jump.wav");
+  soundManager.load("leafCollect", "assets/sfx/leafCollect.wav");
+  soundManager.load("receiveDamage", "assets/sfx/receiveDamage.wav");
+  soundManager.load("music", "assets/sfx/music.wav");
 
   // --- Parallax layer defs (VIEW) ---
   const defs = levelPkg.level?.view?.parallax ?? [];
