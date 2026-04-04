@@ -106,7 +106,7 @@ export class PlayerEntity {
   // build / reset
   // -----------------------
   buildSprites() {
-    const { frameW = 32, frameH = 32 } = this.tilesCfg;
+    const { frameW = 64, frameH = 64 } = this.tilesCfg;
 
     this.sprite = new Sprite(this.startX, this.startY, frameW, frameH);
     this.sprite.rotationLock = true;
@@ -238,7 +238,8 @@ export class PlayerEntity {
   // animation (visual state)
   // -----------------------
   applyAnimation({ grounded, won }) {
-    if (!this.sprite?.anis || Object.keys(this.sprite.anis).length === 0) return;
+    if (!this.sprite?.anis || Object.keys(this.sprite.anis).length === 0)
+      return;
 
     // ---- DEAD: play once, then hold last frame (prevents infinite loop)
     if (this.dead) {
@@ -310,7 +311,8 @@ export class PlayerEntity {
     if (!this.sprite) return;
 
     if (!this.dead && this.invulnTimer > 0) {
-      this.sprite.tint = Math.floor(this.invulnTimer / 4) % 2 === 0 ? "#ff5050" : "#ffffff";
+      this.sprite.tint =
+        Math.floor(this.invulnTimer / 4) % 2 === 0 ? "#ff5050" : "#ffffff";
     } else {
       this.sprite.tint = "#ffffff";
     }

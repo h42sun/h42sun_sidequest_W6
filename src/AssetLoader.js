@@ -140,17 +140,17 @@ function defaultPlayerAnis() {
   return {
     idle: { row: 0, frames: 4, frameDelay: 10 },
     run: { row: 1, frames: 8, frameDelay: 3 },
-    jump: { row: 2, frames: 8, frameDelay: Infinity, frame: 0 },
+    jump: { row: 2, frames: 8, frameDelay: Infinity, frame: 4 },
     attack: { row: 11, frames: 6, frameDelay: 2 },
-    hurtPose: { row: 5, frames: 9, frameDelay: Infinity },
-    death: { row: 5, frames: 7, frameDelay: 16 },
+    hurtPose: { row: 4, frames: 9, frameDelay: Infinity, frame: 1 },
+    death: { row: 4, frames: 7, frameDelay: 16 },
   };
 }
 
 function defaultSlimeAnis() {
   return {
-    run: { row: 1, frames: 4, frameDelay: 3 },
-    throwPose: { row: 2, frames: 1, frameDelay: Infinity, frame: 0 },
+    run: { row: 1, frames: 4, frameDelay: 6 },
+    throwPose: { row: 2, frames: 4, frameDelay: Infinity, frame: 0 },
     death: { row: 3, frames: 4, frameDelay: 16 },
   };
 }

@@ -63,7 +63,9 @@ export function buildTilesAndGroups(level) {
   level.leaf = new Group();
   level.leaf.physics = "static";
   level.leaf.spriteSheet = level.assets.leafImg;
-  level.leaf.addAnis({ idle: { w: 32, h: 32, row: 0, frames: 5 } });
+  level.leaf.addAnis({
+    idle: { w: 34, h: 32, row: 0, frames: 8, frameDelay: 6 },
+  });
   level.leaf.w = 10;
   level.leaf.h = 6;
   level.leaf.anis.offset.x = 2;
@@ -74,7 +76,9 @@ export function buildTilesAndGroups(level) {
   level.fire = new Group();
   level.fire.physics = "static";
   level.fire.spriteSheet = level.assets.fireImg;
-  level.fire.addAnis({ burn: { w: 32, h: 32, row: 0, frames: 16 } });
+  level.fire.addAnis({
+    burn: { w: 64, h: 64, row: 0, frames: 5, frameDelay: 4 },
+  });
   level.fire.w = 18;
   level.fire.h = 16;
   level.fire.tile = "f";

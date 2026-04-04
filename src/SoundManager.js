@@ -21,7 +21,11 @@ export class SoundManager {
   }
 
   load(name, path) {
-    this.sfx[name] = loadSound(path);
+    this.sfx["hitEnemy"] = loadSound("assets/sfx/hitEnemy.wav");
+    this.sfx["jump"] = loadSound("assets/sfx/jump.wav");
+    this.sfx["leafCollect"] = loadSound("assets/sfx/leafCollect.wav");
+    this.sfx["music"] = loadSound("assets/sfx/music.wav");
+    this.sfx["receiveDamage"] = loadSound("assets/sfx/receiveDamage.wav");
   }
 
   play(name) {

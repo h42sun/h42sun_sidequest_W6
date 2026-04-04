@@ -13,9 +13,8 @@
 // - Does NOT load assets (AssetLoader does)
 
 export function buildSlimeGroup(level) {
-  const tiles = level.levelData?.tiles ?? level.tilesCfg ?? {};
-  const frameW = Number(tiles.frameW) || 32;
-  const frameH = Number(tiles.frameH) || 32;
+  const frameW = Number(level.tuning?.slime?.frameW ?? 32);
+  const frameH = Number(level.tuning?.slime?.frameH ?? 32);
 
   level.slime = new Group();
   level.slime.physics = "dynamic";
@@ -59,9 +58,8 @@ function ensureSlimeAnis(level, e) {
   const hasRun = !!(e.anis && e.anis.run);
   if (hasDeath && hasThrow && hasRun) return;
 
-  const tiles = level.levelData?.tiles ?? level.tilesCfg ?? {};
-  const frameW = Number(tiles.frameW) || 32;
-  const frameH = Number(tiles.frameH) || 32;
+  const frameW = Number(level.tuning?.slime?.frameW ?? 32);
+  const frameH = Number(level.tuning?.slime?.frameH ?? 32);
 
   safeAssignSpriteSheet(e, level.assets.slimeImg);
   safeConfigureAniSheet(e, frameW, frameH, -8);
@@ -188,9 +186,8 @@ export function rebuildSlimesFromSpawns(level) {
   // Recreate the group itself
   buildSlimeGroup(level);
 
-  const tiles = level.levelData?.tiles ?? level.tilesCfg ?? {};
-  const frameW = Number(tiles.frameW) || 32;
-  const frameH = Number(tiles.frameH) || 32;
+  const frameW = Number(level.tuning?.slime?.frameW ?? 32);
+  const frameH = Number(level.tuning?.slime?.frameH ?? 32);
 
   const slimeW = Number(level.tuning.slime?.w ?? 18);
   const slimeH = Number(level.tuning.slime?.h ?? 12);
@@ -260,9 +257,8 @@ export function updateSlimes(level) {
     return;
   }
 
-  const tiles = level.levelData?.tiles ?? level.tilesCfg ?? {};
-  const frameW = Number(tiles.frameW) || 32;
-  const frameH = Number(tiles.frameH) || 32;
+  const frameW = Number(level.tuning?.slime?.frameW ?? 32);
+  const frameH = Number(level.tuning?.slime?.frameH ?? 32);
 
   const slimeSpeed = Number(level.tuning.slime?.speed ?? 0.6);
   const slimeW = Number(level.tuning.slime?.w ?? 18);
